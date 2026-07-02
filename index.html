@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QR-Flow ilp2 – QR-Codes automatisch erstellen</title>
+    <meta
+      name="description"
+      content="QR-Flow ilp2 erzeugt druckfertige QR-Codes für vCards, Webseiten, Telefonnummern, E-Mails und Freitext – randlos, transparent, in reinem Schwarz."
+    />
+  </head>
+  <body>
+    <!-- Access gate: shown until the correct password is entered. -->
+    <div id="lockScreen" class="lock-screen">
+      <form id="lockForm" class="lock-card" autocomplete="off">
+        <div class="lock-brand">
+          <span class="wordmark">ILP<span class="accent">2</span></span>
+        </div>
+        <h1>QR-Flow</h1>
+        <p>Dieser Bereich ist geschützt. Bitte Passwort eingeben.</p>
+        <label class="visually-hidden" for="lockPassword">Passwort</label>
+        <input
+          type="password"
+          id="lockPassword"
+          placeholder="Passwort"
+          autocomplete="current-password"
+          required
+        />
+        <button type="submit">Entsperren</button>
+        <p id="lockError" class="lock-error" hidden>Falsches Passwort. Bitte erneut versuchen.</p>
+      </form>
+    </div>
+
+    <div id="appContent" hidden>
+      <div id="app">
+        <header class="app-header">
+          <div class="brand">
+            <span class="brand-mark" aria-hidden="true">
+              <span class="wordmark">ILP<span class="accent">2</span></span>
+            </span>
+            <div class="brand-divider" aria-hidden="true"></div>
+            <div>
+              <p class="eyebrow">QR-Code-Generator</p>
+              <h1>QR-Flow</h1>
+            </div>
+          </div>
+        </header>
+
+        <main class="layout">
+          <!-- Left column: input form -->
+          <section class="panel form-panel" aria-label="Eingabe">
+            <div class="field-group">
+              <label for="qrType">Art des QR-Codes</label>
+              <select id="qrType">
+                <option value="vcard">Kontaktkarte (vCard)</option>
+                <option value="url">Webseitenlink</option>
+                <option value="phone">Telefonnummer</option>
+                <option value="email">E-Mail</option>
+                <option value="text">Freier Text</option>
+              </select>
+            </div>
+
+            <form id="qrForm" novalidate>
+              <fieldset class="type-fields" data-type="vcard">
+                <legend>Kontaktdaten</legend>
+                <div class="field-grid">
+                  <label>Vorname <input type="text" id="vc-firstName" autocomplete="given-name" /></label>
+                  <label>Nachname <input type="text" id="vc-lastName" autocomplete="family-name" /></label>
+                  <label>Firma <input type="text" id="vc-org" autocomplete="organization" /></label>
+                  <label>Position <input type="text" id="vc-title" autocomplete="organization-title" /></label>
+                  <label>Telefonnummer <input type="tel" id="vc-phone" autocomplete="tel" /></label>
+                  <label>Mobilnummer <input type="tel" id="vc-mobile" autocomplete="tel" /></label>
+                  <label>E-Mail <input type="email" id="vc-email" autocomplete="email" /></label>
+                  <label>Webseite <input type="text" id="vc-website" autocomplete="url" placeholder="www.beispiel.de" /></label>
+                  <label>Straße <input type="text" id="vc-street" autocomplete="street-address" /></label>
+                  <label>PLZ <input type="text" id="vc-zip" autocomplete="postal-code" /></label>
+                  <label>Ort <input type="text" id="vc-city" autocomplete="address-level2" /></label>
+                  <label>Land <input type="text" id="vc-country" autocomplete="country-name" /></label>
+                </div>
+              </fieldset>
+
+              <fieldset class="type-fields" data-type="url" hidden>
+                <legend>Webseitenlink</legend>
+                <label>URL <input type="text" id="url-value" placeholder="www.beispiel.de" /></label>
+              </fieldset>
+
+              <fieldset class="type-fields" data-type="phone" hidden>
+                <legend>Telefonnummer</legend>
+                <label>Telefonnummer <input type="tel" id="phone-value" placeholder="+49 30 1234567" /></label>
+              </fieldset>
+
+              <fieldset class="type-fields" data-type="email" hidden>
+                <legend>E-Mail</legend>
+                <label>E-Mail-Adresse <input type="email" id="email-value" placeholder="name@beispiel.de" /></label>
+              </fieldset>
+
+              <fieldset class="type-fields" data-type="text" hidden>
+                <legend>Freier Text</legend>
+                <label>Text <textarea id="text-value" rows="4" placeholder="Beliebiger Text …"></textarea></label>
+              </fieldset>
+            </form>
+
+            <div class="field-group settings-group">
+              <h2>Druck &amp; Export</h2>
+
+              <label for="errorCorrection">
+                Fehlerkorrektur-Level
+                <select id="errorCorrection">
+                  <option value="L">Niedrig (L) – mehr Datenkapazität</option>
+                  <option value="M" selected>Mittel (M) – empfohlen</option>
+                  <option value="Q">Hoch (Q)</option>
+                  <option value="H">Sehr hoch (H) – robuster, weniger Kapazität</option>
+                </select>
+              </label>
+
+              <label for="targetSize">
+                Ziel-Druckgröße in mm (optional)
+                <input type="number" id="targetSize" min="1" step="1" placeholder="z. B. 15" />
+              </label>
+
+              <label for="pngResolution">
+                PNG-Auflösung
+                <select id="pngResolution">
+                  <option value="500">500 × 500 px</option>
+                  <option value="1000" selected>1000 × 1000 px</option>
+                  <option value="2000">2000 × 2000 px</option>
+                  <option value="4000">4000 × 4000 px</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <!-- Right column: live preview, quality info, downloads -->
+          <section class="panel preview-panel" aria-label="Vorschau">
+            <div class="preview-surface">
+              <div class="checker-bg" id="qrPreviewWrap">
+                <div id="qrPreview" class="qr-preview"></div>
+                <p id="emptyState" class="empty-state">
+                  Formular ausfüllen, um eine Live-Vorschau zu sehen.
+                </p>
+              </div>
+            </div>
+
+            <div class="quality-box" id="qualityBox" hidden></div>
+
+            <div class="downloads">
+              <button id="downloadPng" class="btn-primary" type="button" disabled>PNG herunterladen</button>
+              <button id="downloadSvg" class="btn-secondary" type="button" disabled>SVG herunterladen</button>
+              <button id="downloadEps" class="btn-secondary" type="button" disabled>EPS herunterladen</button>
+            </div>
+
+            <p class="hint">
+              <strong>Hinweis:</strong> Die Exportdateien werden bewusst ohne Rand erzeugt. Für zuverlässiges
+              Scannen auf bedrucktem Material einen hellen Ruhebereich von mindestens 4 Modulbreiten rund um
+              den Code freihalten.
+            </p>
+          </section>
+        </main>
+
+        <footer class="app-footer">
+          <p>QR-Flow ilp2 · Läuft vollständig im Browser · Es werden keine Daten an einen Server übertragen.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

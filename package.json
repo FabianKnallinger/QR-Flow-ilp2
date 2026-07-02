@@ -1,0 +1,20 @@
+{
+  "name": "qr-flow-ilp2",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^8.1.1"
+  },
+  "description": "Moderne WebApp zur automatischen Erstellung von druckfertigen QR-Codes (vCard, URL, Telefon, E-Mail, Freitext).",
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "qrcode": "^1.5.4"
+  }
+}
