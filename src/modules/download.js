@@ -13,14 +13,3 @@ export function downloadBlob(filename, blob) {
 export function downloadText(filename, text, mime) {
   downloadBlob(filename, new Blob([text], { type: mime }))
 }
-
-export function slugify(value) {
-  return (
-    String(value)
-      .trim()
-      .toLowerCase()
-      .replace(/[äöüß]/g, (c) => ({ ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss' }[c]))
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'qr-code'
-  )
-}

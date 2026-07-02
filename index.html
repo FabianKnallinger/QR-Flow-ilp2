@@ -64,14 +64,33 @@
             <form id="qrForm" novalidate>
               <fieldset class="type-fields" data-type="vcard">
                 <legend>Kontaktdaten</legend>
+
+                <label class="standort-field">
+                  Standort
+                  <select id="vc-standort">
+                    <option value="" selected>Bitte wählen …</option>
+                  </select>
+                </label>
+                <p class="field-note">
+                  Füllt Firma, Webseite und Adresse automatisch mit den ilp2-Standortdaten.
+                </p>
+
                 <div class="field-grid">
                   <label>Vorname <input type="text" id="vc-firstName" autocomplete="given-name" /></label>
                   <label>Nachname <input type="text" id="vc-lastName" autocomplete="family-name" /></label>
                   <label>Firma <input type="text" id="vc-org" autocomplete="organization" /></label>
-                  <label>Position <input type="text" id="vc-title" autocomplete="organization-title" /></label>
-                  <label>Telefonnummer <input type="tel" id="vc-phone" autocomplete="tel" /></label>
+                  <label>Position
+                    <input type="text" id="vc-title" list="position-options" autocomplete="off" placeholder="Wählen oder frei eingeben" />
+                    <datalist id="position-options"></datalist>
+                  </label>
+                  <label class="field-wide">Telefonnummer
+                    <span class="phone-group">
+                      <span class="phone-prefix mono" id="vc-phonePrefix"></span>
+                      <input type="text" id="vc-phoneExt" inputmode="numeric" placeholder="00" class="phone-ext mono" />
+                    </span>
+                  </label>
                   <label>Mobilnummer <input type="tel" id="vc-mobile" autocomplete="tel" /></label>
-                  <label>E-Mail <input type="email" id="vc-email" autocomplete="email" /></label>
+                  <label>E-Mail <input type="email" id="vc-email" autocomplete="email" placeholder="wird automatisch erstellt" /></label>
                   <label>Webseite <input type="text" id="vc-website" autocomplete="url" placeholder="www.beispiel.de" /></label>
                   <label>Straße <input type="text" id="vc-street" autocomplete="street-address" /></label>
                   <label>PLZ <input type="text" id="vc-zip" autocomplete="postal-code" /></label>

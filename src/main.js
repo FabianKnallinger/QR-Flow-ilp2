@@ -4,8 +4,17 @@ import { matrixToSvgString, drawMatrixToCanvas, matrixToEps } from './modules/qr
 import { buildVCard, isVCardEmpty } from './modules/vcard.js'
 import { buildUrlPayload, buildPhonePayload, buildEmailPayload, buildTextPayload } from './modules/content-builders.js'
 import { assessDataDensity, assessTargetSize } from './modules/quality.js'
-import { downloadBlob, downloadText, slugify } from './modules/download.js'
+import { downloadBlob, downloadText } from './modules/download.js'
 import { initAuthGate } from './modules/auth-gate.js'
+import {
+  COMPANY_NAME,
+  COMPANY_WEBSITE,
+  COMPANY_COUNTRY,
+  PHONE_PREFIX,
+  OFFICE_LOCATIONS,
+  POSITION_OPTIONS,
+} from './modules/company-data.js'
+import { buildVCardFilename } from './modules/filename.js'
 
 initAuthGate({ onUnlock: initApp })
 
@@ -34,13 +43,98 @@ function initApp() {
 
   const vcardFieldIds = [
     'firstName', 'lastName', 'org', 'title',
-    'phone', 'mobile', 'email', 'website',
+    'mobile', 'email', 'website',
     'street', 'zip', 'city', 'country',
   ]
 
   // Holds the most recently rendered matrix + a filename hint for downloads.
   let currentMatrix = null
   let currentFileBase = 'qr-code'
+
+  // ---------------------------------------------------------------------------
+  // ilp2 presets: Standort (office) autofill, Position dropdown, phone prefix
+  // ---------------------------------------------------------------------------
+
+  const standortSelect = document.getElementById('vc-standort')
+  const positionDatalist = document.getElementById('position-options')
+  const phonePrefixEl = document.getElementById('vc-phonePrefix')
+  const phoneExtInput = document.getElementById('vc-phoneExt')
+  const orgInput = document.getElementById('vc-org')
+  const websiteInput = document.getElementById('vc-website')
+  const streetInput = document.getElementById('vc-street')
+  const zipInput = document.getElementById('vc-zip')
+  const cityInput = document.getElementById('vc-city')
+  const countryInput = document.getElementById('vc-country')
+  const firstNameInput = document.getElementById('vc-firstName')
+  const lastNameInput = document.getElementById('vc-lastName')
+  const emailInput = document.getElementById('vc-email')
+
+  for (const location of OFFICE_LOCATIONS) {
+    const option = document.createElement('option')
+    option.value = location.id
+    option.textContent = location.label
+    standortSelect.appendChild(option)
+  }
+
+  // Position is a free-text field with suggestions, not a locked dropdown.
+  for (const position of POSITION_OPTIONS) {
+    const option = document.createElement('option')
+    option.value = position
+    positionDatalist.appendChild(option)
+  }
+
+  phonePrefixEl.textContent = `${PHONE_PREFIX} -`
+
+  standortSelect.addEventListener('change', () => {
+    const location = OFFICE_LOCATIONS.find((loc) => loc.id === standortSelect.value)
+    if (!location) return
+    orgInput.value = COMPANY_NAME
+    websiteInput.value = COMPANY_WEBSITE
+    streetInput.value = location.street
+    zipInput.value = location.zip
+    cityInput.value = location.city
+    countryInput.value = COMPANY_COUNTRY
+    render()
+  })
+
+  // Only digits, max 3 characters, in the extension field.
+  phoneExtInput.addEventListener('input', () => {
+    phoneExtInput.value = phoneExtInput.value.replace(/\D/g, '').slice(0, 3)
+  })
+
+  // Auto-fill the email as vorname.nachname@ilp2.de, but stop overwriting it
+  // the moment the user types their own value in instead.
+  let lastAutoEmail = ''
+
+  function emailLocalPart(value) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .replace(/\s+/g, '')
+      .replace(/[^a-z0-9-]/g, '')
+  }
+
+  function updateAutoEmail() {
+    const first = firstNameInput.value.trim()
+    const last = lastNameInput.value.trim()
+    if (!first || !last) return
+
+    const candidate = `${emailLocalPart(first)}.${emailLocalPart(last)}@ilp2.de`
+    if (emailInput.value.trim() === '' || emailInput.value.trim() === lastAutoEmail) {
+      emailInput.value = candidate
+      lastAutoEmail = candidate
+      render()
+    }
+  }
+
+  firstNameInput.addEventListener('input', updateAutoEmail)
+  lastNameInput.addEventListener('input', updateAutoEmail)
 
   // ---------------------------------------------------------------------------
   // Type switching
@@ -67,6 +161,9 @@ function initApp() {
     for (const id of vcardFieldIds) {
       fields[id] = document.getElementById(`vc-${id}`).value.trim()
     }
+    // The base number is fixed for everyone - only the extension varies.
+    const ext = phoneExtInput.value.trim()
+    fields.phone = ext ? `${PHONE_PREFIX} - ${ext}` : PHONE_PREFIX
     return fields
   }
 
@@ -76,29 +173,31 @@ function initApp() {
 
     if (type === 'vcard') {
       const fields = getVCardFields()
-      if (isVCardEmpty(fields)) return { payload: '', fileBase: 'kontakt' }
-      const name = [fields.firstName, fields.lastName].filter(Boolean).join('-') || fields.org || 'kontakt'
-      return { payload: buildVCard(fields), fileBase: `vcard-${slugify(name)}` }
+      // The phone preset is always present, so ignore it when deciding
+      // whether the card still counts as "empty" (otherwise the preview
+      // would render a near-blank card as soon as the vCard type is picked).
+      if (isVCardEmpty({ ...fields, phone: '' })) return { payload: '', fileBase: 'kontakt' }
+      return { payload: buildVCard(fields), fileBase: buildVCardFilename(fields) }
     }
 
     if (type === 'url') {
       const raw = document.getElementById('url-value').value
-      return { payload: buildUrlPayload(raw), fileBase: 'webseite' }
+      return { payload: buildUrlPayload(raw), fileBase: 'qrflow-webseite' }
     }
 
     if (type === 'phone') {
       const raw = document.getElementById('phone-value').value
-      return { payload: buildPhonePayload(raw), fileBase: 'telefonnummer' }
+      return { payload: buildPhonePayload(raw), fileBase: 'qrflow-telefonnummer' }
     }
 
     if (type === 'email') {
       const raw = document.getElementById('email-value').value
-      return { payload: buildEmailPayload(raw), fileBase: 'email' }
+      return { payload: buildEmailPayload(raw), fileBase: 'qrflow-email' }
     }
 
     // text
     const raw = document.getElementById('text-value').value
-    return { payload: buildTextPayload(raw), fileBase: 'text' }
+    return { payload: buildTextPayload(raw), fileBase: 'qrflow-text' }
   }
 
   // ---------------------------------------------------------------------------
@@ -180,21 +279,21 @@ function initApp() {
     const canvas = document.createElement('canvas')
     const { size } = drawMatrixToCanvas(currentMatrix, canvas, requested)
     canvas.toBlob((blob) => {
-      downloadBlob(`qrflow-${currentFileBase}-${size}px.png`, blob)
+      downloadBlob(`${currentFileBase}-${size}px.png`, blob)
     }, 'image/png')
   })
 
   downloadSvgBtn.addEventListener('click', () => {
     if (!currentMatrix) return
     const svg = matrixToSvgString(currentMatrix)
-    downloadText(`qrflow-${currentFileBase}.svg`, svg, 'image/svg+xml')
+    downloadText(`${currentFileBase}.svg`, svg, 'image/svg+xml')
   })
 
   downloadEpsBtn.addEventListener('click', () => {
     if (!currentMatrix) return
     const targetSizeMm = Number(targetSizeInput.value)
     const eps = matrixToEps(currentMatrix, { sizeMm: targetSizeMm > 0 ? targetSizeMm : 40 })
-    downloadText(`qrflow-${currentFileBase}.eps`, eps, 'application/postscript')
+    downloadText(`${currentFileBase}.eps`, eps, 'application/postscript')
   })
 
   // ---------------------------------------------------------------------------
