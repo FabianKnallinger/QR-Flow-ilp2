@@ -13,8 +13,8 @@
   },
   "description": "Moderne WebApp zur automatischen Erstellung von druckfertigen QR-Codes (vCard, URL, Telefon, E-Mail, Freitext).",
   "dependencies": {
-    "@fontsource/ibm-plex-mono": "^5.2.7",
-    "@fontsource/ibm-plex-sans": "^5.2.8",
+    "@fontsource/karla": "^5.2.8",
+    "pdf-lib": "^1.17.1",
     "qrcode": "^1.5.4"
   }
 }

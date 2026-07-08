@@ -14,7 +14,9 @@ import {
   OFFICE_LOCATIONS,
   POSITION_OPTIONS,
 } from './modules/company-data.js'
-import { buildVCardFilename } from './modules/filename.js'
+import { buildVCardFilename, buildCardFilename } from './modules/filename.js'
+import { drawBusinessCard, loadCardStamp } from './modules/business-card.js'
+import { buildCardPdf } from './modules/card-exports.js'
 
 initAuthGate({ onUnlock: initApp })
 
@@ -40,6 +42,12 @@ function initApp() {
   const downloadPngBtn = document.getElementById('downloadPng')
   const downloadSvgBtn = document.getElementById('downloadSvg')
   const downloadEpsBtn = document.getElementById('downloadEps')
+
+  const cardPanel = document.getElementById('cardPanel')
+  const cardPreviewWrap = document.getElementById('cardPreviewWrap')
+  const cardCanvas = document.getElementById('cardCanvas')
+  const downloadCardBtn = document.getElementById('downloadCard')
+  const downloadCardPdfBtn = document.getElementById('downloadCardPdf')
 
   const vcardFieldIds = [
     'firstName', 'lastName', 'org', 'title',
@@ -237,6 +245,36 @@ function initApp() {
   }
 
   // ---------------------------------------------------------------------------
+  // Business card preview
+  // ---------------------------------------------------------------------------
+
+  // Re-render once the company stamp graphic and the webfonts used on the
+  // card are available.
+  let cardStampImage = null
+  loadCardStamp().then((img) => {
+    cardStampImage = img
+    renderCard()
+  })
+  document.fonts.ready.then(renderCard)
+
+  function renderCard() {
+    const isVCard = qrTypeSelect.value === 'vcard'
+    cardPanel.hidden = !isVCard
+    if (!isVCard) return
+
+    const fields = getVCardFields()
+    const hasContent = Boolean(fields.firstName || fields.lastName)
+
+    cardPreviewWrap.classList.toggle('is-empty', !hasContent)
+    downloadCardBtn.disabled = !hasContent
+    // The PDF export needs the QR code as well.
+    downloadCardPdfBtn.disabled = !hasContent || !currentMatrix
+    if (!hasContent) return
+
+    drawBusinessCard(cardCanvas, { fields, matrix: currentMatrix, stampImage: cardStampImage })
+  }
+
+  // ---------------------------------------------------------------------------
   // Main render
   // ---------------------------------------------------------------------------
 
@@ -250,6 +288,7 @@ function initApp() {
       previewEl.innerHTML = ''
       qualityBox.hidden = true
       setDownloadsEnabled(false)
+      renderCard()
       return
     }
 
@@ -261,6 +300,7 @@ function initApp() {
 
     renderQualityBox(currentMatrix)
     setDownloadsEnabled(true)
+    renderCard()
   }
 
   function setDownloadsEnabled(enabled) {
@@ -294,6 +334,41 @@ function initApp() {
     const targetSizeMm = Number(targetSizeInput.value)
     const eps = matrixToEps(currentMatrix, { sizeMm: targetSizeMm > 0 ? targetSizeMm : 40 })
     downloadText(`${currentFileBase}.eps`, eps, 'application/postscript')
+  })
+
+  downloadCardBtn.addEventListener('click', () => {
+    const fields = getVCardFields()
+    if (!fields.firstName && !fields.lastName) return
+    cardCanvas.toBlob((blob) => {
+      downloadBlob(`${buildCardFilename(fields)}.png`, blob)
+    }, 'image/png')
+  })
+
+  // Wraps the async card exports: disables the button while generating and
+  // restores its label afterwards (or shows the error briefly on failure).
+  function handleCardExport(button, exportFn) {
+    button.addEventListener('click', async () => {
+      const fields = getVCardFields()
+      if ((!fields.firstName && !fields.lastName) || !currentMatrix) return
+
+      const label = button.textContent
+      button.disabled = true
+      button.textContent = 'Wird erstellt …'
+      try {
+        await exportFn(fields)
+      } catch (error) {
+        console.error('Visitenkarten-Export fehlgeschlagen:', error)
+        alert(`Export fehlgeschlagen: ${error.message}`)
+      } finally {
+        button.textContent = label
+        button.disabled = false
+      }
+    })
+  }
+
+  handleCardExport(downloadCardPdfBtn, async (fields) => {
+    const bytes = await buildCardPdf({ fields, matrix: currentMatrix, stampImage: cardStampImage })
+    downloadBlob(`${buildCardFilename(fields)}.pdf`, new Blob([bytes], { type: 'application/pdf' }))
   })
 
   // ---------------------------------------------------------------------------

@@ -1,15 +1,15 @@
-/* Latin + Latin-Extended only (covers German umlauts/ß) - skips the other
-   unicode-range subsets fontsource ships to keep the bundle lean. */
-@import "@fontsource/ibm-plex-sans/latin-400.css";
-@import "@fontsource/ibm-plex-sans/latin-500.css";
-@import "@fontsource/ibm-plex-sans/latin-600.css";
-@import "@fontsource/ibm-plex-sans/latin-700.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-400.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-500.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-600.css";
-@import "@fontsource/ibm-plex-sans/latin-ext-700.css";
-@import "@fontsource/ibm-plex-mono/latin-500.css";
-@import "@fontsource/ibm-plex-mono/latin-ext-500.css";
+/* Karla is the one and only typeface - used for the whole site AND the
+   business card. Latin + Latin-Extended only (covers German umlauts/ß) -
+   skips the other unicode-range subsets fontsource ships to keep the
+   bundle lean. */
+@import "@fontsource/karla/latin-400.css";
+@import "@fontsource/karla/latin-500.css";
+@import "@fontsource/karla/latin-600.css";
+@import "@fontsource/karla/latin-700.css";
+@import "@fontsource/karla/latin-ext-400.css";
+@import "@fontsource/karla/latin-ext-500.css";
+@import "@fontsource/karla/latin-ext-600.css";
+@import "@fontsource/karla/latin-ext-700.css";
 
 :root {
   /* Neutral, ink-led palette. A single accent is reserved for the brand
@@ -38,8 +38,9 @@
   --radius-md: 6px;
   --shadow-panel: 0 1px 1px rgba(20, 20, 22, 0.03), 0 4px 14px rgba(20, 20, 22, 0.045);
 
-  --font-sans: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-sans: "Karla", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Everything runs in Karla - including the elements that used to be mono. */
+  --font-mono: "Karla", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   font-family: var(--font-sans);
 }
@@ -72,17 +73,18 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* ---------- Wordmark (stand-in until the ILP2 brand logo asset is added to
-   public/brand/ - see README) ---------- */
+/* ---------- Brand logo (converted from the print logo PDF) ---------- */
 
-.wordmark {
-  font-family: var(--font-sans);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.brand-logo {
+  display: block;
+  width: 44px;
+  height: 44px;
 }
 
-.wordmark .accent {
-  color: var(--accent);
+.lock-brand .brand-logo {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
 }
 
 /* ---------- App shell ---------- */
@@ -520,6 +522,57 @@ fieldset[data-type] > label {
 
 .hint strong {
   color: var(--ink-soft);
+}
+
+/* ---------- Business card preview ---------- */
+
+.card-panel {
+  margin-top: 20px;
+}
+
+.card-panel h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.card-preview-wrap {
+  position: relative;
+  margin-top: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--paper);
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+}
+
+.card-canvas {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  display: block;
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
+  border-radius: 2px;
+}
+
+.card-preview-wrap.is-empty .card-canvas {
+  display: none;
+}
+
+.card-preview-wrap .empty-state {
+  position: static;
+  display: none;
+}
+
+.card-preview-wrap.is-empty .empty-state {
+  display: flex;
+}
+
+.card-downloads {
+  grid-template-columns: minmax(0, 320px);
+  justify-content: center;
 }
 
 /* ---------- Footer ---------- */

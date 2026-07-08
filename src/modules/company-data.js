@@ -2,10 +2,10 @@
 // (office location) preset, the Position dropdown and the phone prefix stay
 // consistent wherever they're used in the form.
 
-export const COMPANY_NAME = 'ilp2 Ingenieure GmbH & Co. KG'
+export const COMPANY_NAME = 'ILP² INGENIEURE GmbH & Co. KG'
 export const COMPANY_WEBSITE = 'www.ilp2.de'
 export const COMPANY_COUNTRY = 'Deutschland'
-export const PHONE_PREFIX = '089 / 22 840 983'
+export const PHONE_PREFIX = '+49 89 22 840 983'
 
 export const OFFICE_LOCATIONS = [
   { id: 'muenchen', label: 'München', street: 'Koppstraße 14', zip: '81379', city: 'München' },

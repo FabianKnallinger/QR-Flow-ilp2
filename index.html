@@ -15,7 +15,7 @@
     <div id="lockScreen" class="lock-screen">
       <form id="lockForm" class="lock-card" autocomplete="off">
         <div class="lock-brand">
-          <span class="wordmark">ILP<span class="accent">2</span></span>
+          <img class="brand-logo" src="./brand/card-logo.svg" alt="ilp2 Logo" />
         </div>
         <h1>QR-Flow</h1>
         <p>Dieser Bereich ist geschützt. Bitte Passwort eingeben.</p>
@@ -37,7 +37,7 @@
         <header class="app-header">
           <div class="brand">
             <span class="brand-mark" aria-hidden="true">
-              <span class="wordmark">ILP<span class="accent">2</span></span>
+              <img class="brand-logo" src="./brand/card-logo.svg" alt="" />
             </span>
             <div class="brand-divider" aria-hidden="true"></div>
             <div>
@@ -176,6 +176,31 @@
             </p>
           </section>
         </main>
+
+        <!-- Business card: live preview built from the vCard form data.
+             Outside the .layout grid so the sticky QR preview panel cannot
+             slide down over it while scrolling. -->
+        <section class="panel card-panel" id="cardPanel" aria-label="Visitenkarte" hidden>
+            <h2>Visitenkarte</h2>
+            <p class="field-note">
+              Vor- und Nachname, Position, Telefonnummer, E-Mail, Adresse und der QR-Code werden
+              automatisch aus den Kontaktdaten übernommen – das Kartenlayout selbst bleibt unverändert.
+            </p>
+            <div class="card-preview-wrap" id="cardPreviewWrap">
+              <canvas id="cardCanvas" class="card-canvas"></canvas>
+              <p class="empty-state card-empty-state">
+                Kontaktdaten ausfüllen, um die Visitenkarten-Vorschau zu sehen.
+              </p>
+            </div>
+            <div class="downloads card-downloads">
+              <button id="downloadCardPdf" class="btn-primary" type="button" disabled>
+                Visitenkarte als PDF herunterladen
+              </button>
+              <button id="downloadCard" class="btn-secondary" type="button" disabled>
+                Visitenkarte als PNG herunterladen
+              </button>
+            </div>
+        </section>
 
         <footer class="app-footer">
           <p>QR-Flow ilp2 · Läuft vollständig im Browser · Es werden keine Daten an einen Server übertragen.</p>
