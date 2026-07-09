@@ -1,21 +1,16 @@
-// Renders the ilp2 business card (Visitenkarte) onto a canvas, following the
-// fixed print layout from the InDesign template. The layout itself never
-// changes - only the person-specific data (position, name, phone, e-mail,
-// address) and the generated QR code are filled in from the form.
+// Renders the ilp2 business card (Visitenkarte) onto a canvas for the live
+// preview and the PNG download. The layout replicates the designer's print
+// PDF template (ILP2_Visitenkarte_260613_04.pdf, front page) exactly: every
+// coordinate below was read from the template's PDF content stream and
+// converted from points to millimeters. The PDF download in
+// card-exports.js uses the original template file itself - this canvas
+// mirrors it so preview, PNG and PDF all look the same.
 //
-// All layout coordinates below are in millimeters on the 85 x 55 mm card and
-// were measured from the reference card. The canvas is drawn at a fixed
-// pixel-per-mm scale so the PNG export is print-resolution.
+// All text is Karla Regular, like in the template.
 import { getRowRuns } from './qr-matrix.js'
 
 export const CARD_WIDTH_MM = 85
 export const CARD_HEIGHT_MM = 55
-
-// White slug border around the trim area carrying the corner crop marks,
-// like the designer's print PDF of the card.
-export const SLUG_MM = 6.5
-const CROP_MARK_GAP_MM = 1.8 // gap between the trim corner and the mark
-const CROP_MARK_WIDTH_MM = 0.12
 
 // ~600 dpi: 24 px/mm.
 const PX_PER_MM = 24
@@ -27,21 +22,26 @@ const FONT = '"Karla"'
 // the fallback placeholder when the SVG has not loaded (yet).
 const STAMP_ASPECT = 263.582 / 62.159
 
+// Template geometry in millimeters from the top-left trim corner; y values
+// on text entries are baselines, exactly as in the template PDF.
 const LAYOUT = {
-  marginLeft: 5,
+  position: { x: 4.8803, size: 2.4694, baseline: 6.5591 },
 
-  position: { size: 2.4, weight: 600, baseline: 7.4, tracking: 0.06 },
-  rule: { y: 8.9, height: 0.18, extra: 1.2 },
+  // The rule under the position line is a fixed part of the template: it
+  // always runs from the left margin up to the QR frame, independent of how
+  // long the position text is.
+  rule: { x0: 4.9642, x1: 59.9644, y: 7.8791, stroke: 0.169 },
 
-  name: { size: 6.3, weight: 700, line1Baseline: 16.4, line2Baseline: 23.3, tracking: 0.01 },
+  // The name is set in Karla Bold, everything else in Karla Regular.
+  name: { x: 4.5361, size: 8.4515, weight: 700, line1Baseline: 16.7502, line2Baseline: 24.3565 },
 
-  contact: { size: 2.75, weight: 400, firstBaseline: 30.8, lineHeight: 3.6 },
+  contact: { x: 5.0, size: 3.175, firstBaseline: 31.8861, lineHeight: 3.8798 },
 
-  // Company stamp (logo + wordmark as one fixed graphic), bottom-aligned
-  // with the QR code like on the reference card.
-  stamp: { x: 5, height: 6.6, bottom: 49.3 },
+  // Company stamp (logo + wordmark as one fixed graphic).
+  stamp: { x: 5, height: 7.0, bottom: 50.0 },
 
-  qr: { size: 25.0, rightEdge: 82.0, bottomEdge: 49.3 },
+  // Frame of the QR code in the template.
+  qr: { x: 60.0003, y: 30.0002, size: 19.9337 },
 }
 
 /**
@@ -66,42 +66,47 @@ export function loadCardStamp() {
   return tryLoad(0)
 }
 
-/**
- * Position and size of the QR code on the card in millimeters (top-left
- * origin, y pointing down) - shared with the vector PDF export so the code
- * sits at exactly the same spot in every output format.
- * @returns {{ x: number, y: number, size: number }}
- */
-export function getQrRectMm() {
-  const { qr } = LAYOUT
-  return { x: qr.rightEdge - qr.size, y: qr.bottomEdge - qr.size, size: qr.size }
-}
-
 // Uppercases like the card template: ß stays ß (JS toUpperCase would turn
 // "Lißner" into "LISSNER", the printed cards keep the ß glyph).
 export function cardUpperCase(value) {
   return [...value].map((ch) => (ch === 'ß' ? 'ß' : ch.toUpperCase())).join('')
 }
 
-function setFont(ctx, { size, weight, tracking = 0 }) {
-  ctx.font = `${weight} ${size * PX_PER_MM}px ${FONT}`
-  // Canvas letterSpacing expects a CSS length; not all browsers support it,
-  // in which case the assignment is silently ignored.
-  ctx.letterSpacing = `${tracking * size * PX_PER_MM}px`
+/**
+ * The contact block lines (phone / e-mail / address) exactly as they appear
+ * on the card - shared between the canvas renderer and the PDF export.
+ * @returns {string[]}
+ */
+export function buildContactLines(fields) {
+  const address = [fields.street, [fields.zip, fields.city].filter(Boolean).join(' ')]
+    .filter((part) => part && part.trim())
+    .join(', ')
+
+  return [fields.phone, (fields.email || '').trim(), address].filter(Boolean)
+}
+
+function setFont(ctx, sizeMm, weight = 400) {
+  ctx.font = `${weight} ${sizeMm * PX_PER_MM}px ${FONT}`
 }
 
 function drawQr(ctx, matrix) {
   const { qr } = LAYOUT
-  // Snap the module size to whole pixels so the code stays crisp (no
-  // anti-aliased module edges that would hurt scan contrast).
-  const moduleSize = Math.max(1, Math.floor((qr.size * PX_PER_MM) / matrix.size))
-  const sizePx = moduleSize * matrix.size
-  const x = Math.round(qr.rightEdge * PX_PER_MM) - sizePx
-  const y = Math.round(qr.bottomEdge * PX_PER_MM) - sizePx
+  // The QR always fills the template's frame exactly, so the module size is
+  // fractional. Runs get a tiny overlap so no white hairline seams appear
+  // between rows at fractional pixel positions.
+  const moduleSize = (qr.size * PX_PER_MM) / matrix.size
+  const x0 = qr.x * PX_PER_MM
+  const y0 = qr.y * PX_PER_MM
+  const overlap = 0.4
 
   ctx.fillStyle = INK
   for (const { row, col, span } of getRowRuns(matrix)) {
-    ctx.fillRect(x + col * moduleSize, y + row * moduleSize, span * moduleSize, moduleSize)
+    ctx.fillRect(
+      x0 + col * moduleSize,
+      y0 + row * moduleSize,
+      span * moduleSize + overlap,
+      moduleSize + overlap,
+    )
   }
 }
 
@@ -121,7 +126,7 @@ function drawStamp(ctx, stampImage, mm) {
   ctx.fillStyle = INK
   ctx.fillRect(x, y, height, height)
   ctx.fillStyle = '#ffffff'
-  setFont(ctx, { size: stamp.height * 0.42, weight: 700 })
+  setFont(ctx, stamp.height * 0.42)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText('iL2', x + height / 2, y + height * 0.54)
@@ -129,29 +134,9 @@ function drawStamp(ctx, stampImage, mm) {
   ctx.textBaseline = 'alphabetic'
 }
 
-// Two short lines per corner marking the trim edges, like the crop marks in
-// the designer's print PDF. Drawn in untranslated page coordinates.
-function drawCropMarks(ctx, mm) {
-  const slug = mm(SLUG_MM)
-  const markLength = mm(SLUG_MM - CROP_MARK_GAP_MM)
-  const w = Math.max(1, Math.round(mm(CROP_MARK_WIDTH_MM)))
-  const pageW = mm(CARD_WIDTH_MM + 2 * SLUG_MM)
-  const pageH = mm(CARD_HEIGHT_MM + 2 * SLUG_MM)
-
-  ctx.fillStyle = INK
-  for (const trimX of [slug, pageW - slug]) {
-    ctx.fillRect(Math.round(trimX - w / 2), 0, w, markLength)
-    ctx.fillRect(Math.round(trimX - w / 2), pageH - markLength, w, markLength)
-  }
-  for (const trimY of [slug, pageH - slug]) {
-    ctx.fillRect(0, Math.round(trimY - w / 2), markLength, w)
-    ctx.fillRect(pageW - markLength, Math.round(trimY - w / 2), markLength, w)
-  }
-}
-
 /**
- * Draws the complete card. Static layout + fixed company block; dynamic
- * person data and QR code from the form.
+ * Draws the complete card front. Static layout + fixed company stamp;
+ * dynamic person data and QR code from the form.
  *
  * @param {HTMLCanvasElement} canvas
  * @param {{
@@ -159,60 +144,48 @@ function drawCropMarks(ctx, mm) {
  *             email?: string, street?: string, zip?: string, city?: string },
  *   matrix: object | null,
  *   stampImage: HTMLImageElement | null,
- *   omitQr?: boolean, - skip the raster QR (the PDF export draws it as vector instead)
  * }} options
  */
-export function drawBusinessCard(canvas, { fields, matrix, stampImage, omitQr = false }) {
-  canvas.width = (CARD_WIDTH_MM + 2 * SLUG_MM) * PX_PER_MM
-  canvas.height = (CARD_HEIGHT_MM + 2 * SLUG_MM) * PX_PER_MM
+export function drawBusinessCard(canvas, { fields, matrix, stampImage }) {
+  canvas.width = CARD_WIDTH_MM * PX_PER_MM
+  canvas.height = CARD_HEIGHT_MM * PX_PER_MM
 
   const ctx = canvas.getContext('2d')
   const mm = (value) => value * PX_PER_MM
-  const left = mm(LAYOUT.marginLeft)
 
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = INK
 
-  drawCropMarks(ctx, mm)
-
-  // Everything below is drawn in trim coordinates (origin = top-left trim
-  // corner), so the layout values stay plain card millimeters.
-  ctx.translate(mm(SLUG_MM), mm(SLUG_MM))
-
-  // Position line with rule underneath - hidden when no position is set.
+  // Position line - the rule below it is static template art and is always
+  // drawn in full length, even when the position text is short or empty.
   const position = cardUpperCase((fields.title || '').trim())
   if (position) {
-    setFont(ctx, LAYOUT.position)
-    ctx.fillText(position, left, mm(LAYOUT.position.baseline))
-    const textWidth = ctx.measureText(position).width
-    ctx.fillRect(left, mm(LAYOUT.rule.y), textWidth + mm(LAYOUT.rule.extra), mm(LAYOUT.rule.height))
+    setFont(ctx, LAYOUT.position.size)
+    ctx.fillText(position, mm(LAYOUT.position.x), mm(LAYOUT.position.baseline))
   }
+  const { rule } = LAYOUT
+  ctx.fillRect(mm(rule.x0), mm(rule.y - rule.stroke / 2), mm(rule.x1 - rule.x0), mm(rule.stroke))
 
   // Name: first name and last name on their own lines, uppercase.
-  setFont(ctx, LAYOUT.name)
+  setFont(ctx, LAYOUT.name.size, LAYOUT.name.weight)
   const firstName = cardUpperCase((fields.firstName || '').trim())
   const lastName = cardUpperCase((fields.lastName || '').trim())
-  if (firstName) ctx.fillText(firstName, left, mm(LAYOUT.name.line1Baseline))
-  if (lastName) ctx.fillText(lastName, left, mm(LAYOUT.name.line2Baseline))
+  if (firstName) ctx.fillText(firstName, mm(LAYOUT.name.x), mm(LAYOUT.name.line1Baseline))
+  if (lastName) ctx.fillText(lastName, mm(LAYOUT.name.x), mm(LAYOUT.name.line2Baseline))
 
   // Contact block: phone / e-mail / address.
-  setFont(ctx, LAYOUT.contact)
-  const addressParts = [fields.street, [fields.zip, fields.city].filter(Boolean).join(' ')]
-  const contactLines = [
-    fields.phone,
-    (fields.email || '').trim(),
-    addressParts.filter((part) => part && part.trim()).join(', '),
-  ].filter(Boolean)
-
-  contactLines.forEach((line, index) => {
-    ctx.fillText(line, left, mm(LAYOUT.contact.firstBaseline + index * LAYOUT.contact.lineHeight))
+  setFont(ctx, LAYOUT.contact.size)
+  buildContactLines(fields).forEach((line, index) => {
+    ctx.fillText(
+      line,
+      mm(LAYOUT.contact.x),
+      mm(LAYOUT.contact.firstBaseline + index * LAYOUT.contact.lineHeight),
+    )
   })
 
   // Fixed company stamp (logo + wordmark as one graphic from the print PDF).
   drawStamp(ctx, stampImage, mm)
 
-  if (matrix && !omitQr) drawQr(ctx, matrix)
-
-  ctx.resetTransform()
+  if (matrix) drawQr(ctx, matrix)
 }

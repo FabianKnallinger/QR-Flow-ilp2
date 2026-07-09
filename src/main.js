@@ -367,7 +367,7 @@ function initApp() {
   }
 
   handleCardExport(downloadCardPdfBtn, async (fields) => {
-    const bytes = await buildCardPdf({ fields, matrix: currentMatrix, stampImage: cardStampImage })
+    const bytes = await buildCardPdf({ fields, matrix: currentMatrix })
     downloadBlob(`${buildCardFilename(fields)}.pdf`, new Blob([bytes], { type: 'application/pdf' }))
   })
 
