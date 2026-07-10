@@ -1,14 +1,15 @@
 // Fills the designer's print PDF template with the person's data.
 //
-// The base is src/assets/visitenkarte-vorlage.pdf - the ORIGINAL print PDF
-// (ILP2_Visitenkarte_260613_04.pdf, back + front page) with only the
-// person-specific text and the QR code removed. Logo, company stamp, the
-// rule under the position line and the back side stay byte-identical to
-// the original. At export time the new text is set in the embedded Karla
-// Regular at exactly the coordinates measured from the original PDF, and
-// the QR code is drawn as vector rectangles into exactly the frame the
-// original QR occupied.
-import { PDFDocument, rgb } from 'pdf-lib'
+// The base is src/assets/visitenkarte-vorlage.pdf, built from the original
+// print PDF by scripts/build-vorlage.py: person text and QR removed, all
+// colors converted to CMYK, crop marks and TrimBox added, ISO Coated v2
+// output intent embedded. Logo, stamp, position rule and the back page
+// come unchanged from the original. At export time the new text is set in
+// embedded Karla Regular/Bold at exactly the measured template coordinates
+// and the QR code is drawn as vector rectangles into the original QR frame
+// - everything in pure CMYK black (0/0/0/100) so nothing separates onto
+// the CMY plates. The result is stamped as PDF/X-3:2002 for the printer.
+import { PDFDocument, PDFName, PDFString, cmyk } from 'pdf-lib'
 import fontkit from '@pdf-lib/fontkit'
 import { getRowRuns } from './qr-matrix.js'
 import { cardUpperCase, buildContactLines } from './business-card.js'
@@ -57,12 +58,22 @@ export async function buildCardPdf({ fields, matrix }) {
   // Like in the original: the name is Karla Bold, everything else Regular.
   const karla = await pdf.embedFont(karlaBytes, { subset: true })
   const karlaBold = await pdf.embedFont(karlaBoldBytes, { subset: true })
+
+  // PDF/X-3:2002 document identification (the output intent with the ISO
+  // Coated v2 profile is already part of the template).
+  const now = new Date()
   pdf.setTitle('ilp2 Visitenkarte')
   pdf.setProducer('QR-Flow ilp2')
+  pdf.setCreator('QR-Flow ilp2')
+  pdf.setCreationDate(now)
+  pdf.setModificationDate(now)
+  const info = pdf.context.lookup(pdf.context.trailerInfo.Info)
+  info.set(PDFName.of('GTS_PDFXVersion'), PDFString.of('PDF/X-3:2002'))
+  info.set(PDFName.of('Trapped'), PDFName.of('False'))
 
   // Page 0 is the card's back (stays untouched), page 1 the front.
   const page = pdf.getPage(1)
-  const black = rgb(0, 0, 0)
+  const black = cmyk(0, 0, 0, 1)
   const text = (value, x, y, size, font = karla) =>
     page.drawText(value, { x, y, size, font, color: black })
 
@@ -92,5 +103,18 @@ export async function buildCardPdf({ fields, matrix }) {
     }
   }
 
-  return pdf.save()
+  // Object streams are a PDF 1.5 feature - PDF/X-3:2002 is based on 1.3/1.4,
+  // so save with a classic cross-reference table.
+  const bytes = await pdf.save({ useObjectStreams: false })
+  return finalizePdfX3(bytes)
+}
+
+// One byte-level fix pdf-lib cannot do itself: PDF/X-3:2002 requires a
+// header version <= 1.4, pdf-lib always writes 1.7. The replacement is
+// same-length, so no byte offsets shift. (The trailer /ID that PDF/X also
+// requires is written by pdf-lib itself.)
+function finalizePdfX3(bytes) {
+  const header = '%PDF-1.3'
+  for (let i = 0; i < header.length; i++) bytes[i] = header.charCodeAt(i)
+  return bytes
 }
