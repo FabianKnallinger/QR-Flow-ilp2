@@ -461,6 +461,68 @@ fieldset[data-type] > label {
   border-color: var(--bad-border);
 }
 
+/* ---------- Print specs (business card PDF) ---------- */
+
+.print-specs {
+  margin-top: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 15px 17px;
+}
+
+.print-specs-title {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.print-specs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 9px 22px;
+}
+
+@media (min-width: 640px) {
+  .print-specs-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.print-specs-list li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.print-specs-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--good-fg);
+  background: var(--good-bg);
+  border: 1px solid var(--good-border);
+  border-radius: 50%;
+  margin-top: 2px;
+}
+
+.print-specs-list strong {
+  display: block;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
 /* ---------- Downloads ---------- */
 
 .downloads {
